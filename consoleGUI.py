@@ -56,6 +56,9 @@ class SerialFrame(tk.PanedWindow):
         self.controlsFrame = tk.PanedWindow(master=self)
         self.controlsFrame.pack(fill=tk.BOTH,expand=False)
 
+        self.clearscreenButton = tk.Button(self.controlsFrame, text="clear", command=self.onClearscreen)
+        self.clearscreenButton.pack(side=tk.LEFT)
+
         self.intVarShowCR = tk.IntVar()
         self.intVarShowCR.set(0)
         self.checkShowCR = tk.Checkbutton(self.controlsFrame, text = "CR", variable=self.intVarShowCR)
@@ -168,6 +171,9 @@ class SerialFrame(tk.PanedWindow):
             print("onPortEntry():", type(e), e.args)
         self.onAttach()
     
+    def onClearscreen(self):
+        self.text.delete("1.0", "end")
+
     def onAttach(self):
         if self.intVarAttach.get():
             self.startSerial()
