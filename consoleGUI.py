@@ -7,18 +7,16 @@ from select import poll
 from _thread import start_new_thread as start
 import tkinter as tk
 import tkinter.ttk as ttk
-import sys
+import sys, time
 
 ''' BUG
 *** When repr is checked, and RTS is toggled too fast, the app hangs
+*** Also hangs in some cases when serial port misbehaves
 '''
 
 '''TODO
 *** Process incoming backspace character correctly. Moreover, verify if arrow keys are being sent (correctly)
-'''
-
-''' CAVEAT
-*** Whenever a top-level tk.Tk() window exists, of which this class is not aware about (ie no master kwarg was passed), then it behaves bizarrly and serial crashes, claiming RuntimeError: main thread is not in main loop. Also applies if this file is imported elsewhere as a module. So pass the master kwarg. mtTkinter does NOT solve issue. Infact, it additionally makes the textbox (or perhaps the serial thread for mutex reasons) extremely slow.
+*** Separate CR checkbox if necessary, one for input, one for output, since inputs expect it to have a different state than outputs
 '''
 
 class SerialFrame(tk.PanedWindow):
@@ -58,6 +56,11 @@ class SerialFrame(tk.PanedWindow):
 
         self.clearscreenButton = tk.Button(self.controlsFrame, text="clear", command=self.onClearscreen)
         self.clearscreenButton.pack(side=tk.LEFT)
+
+        self.intVarTimestamps = tk.IntVar()
+        self.intVarTimestamps.set(0)
+        self.checkTimestamps = tk.Checkbutton(self.controlsFrame, text = "Timestamps", variable=self.intVarTimestamps)
+        self.checkTimestamps.pack(side=tk.LEFT)
 
         self.intVarShowCR = tk.IntVar()
         self.intVarShowCR.set(0)
@@ -225,7 +228,7 @@ class SerialFrame(tk.PanedWindow):
                 byte = self.serial.read(self.serial.in_waiting)
             except Exception as e:
                 print("serialIteration():", type(e), e.args)
-                return
+                return            
             if not self.intVarShowCR.get():
                 byte = byte.replace(b"\r", b"")
             elif self.intVarTranslateCR.get():
@@ -233,6 +236,8 @@ class SerialFrame(tk.PanedWindow):
             if self.intVarRepr.get() and len(byte) > 0:
                 byte = repr(byte)[2:-1]
             self.text.insert(tk.END, byte)
+            if byte == b"\n" and self.intVarTimestamps.get():
+                self.text.insert(tk.END, f"<{time.ctime().split()[3]}>\t")
             if self.intVarAutoscroll.get():
                 self.text.see(tk.END)
         except Exception as e:
