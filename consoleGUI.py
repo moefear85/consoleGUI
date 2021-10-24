@@ -50,12 +50,15 @@ class SerialFrame(tk.PanedWindow):
                 self.master.attributes("-alpha", self.alpha)
             except Exception as e:
                 print("__init__():", type(e), e.args)
+        
+        #self.master.attributes('-topmost', True)
+        #self.master.update()
 
         self.controlsFrame = tk.PanedWindow(master=self)
         self.controlsFrame.pack(fill=tk.BOTH,expand=False)
 
-        self.clearscreenButton = tk.Button(self.controlsFrame, text="clear", command=self.onClearscreen)
-        self.clearscreenButton.pack(side=tk.LEFT)
+        self.buttonClearscreen = tk.Button(self.controlsFrame, text="clear", command=self.onClearscreen)
+        self.buttonClearscreen.pack(side=tk.LEFT)
 
         self.intVarTimestamps = tk.IntVar()
         self.intVarTimestamps.set(0)
@@ -100,6 +103,12 @@ class SerialFrame(tk.PanedWindow):
         self.entryBaud = tk.Entry(master=self.controlsFrame, textvariable=self.stringVarBaud, width=9)
         self.entryBaud.pack(side=tk.RIGHT, expand=False)
         self.entryBaud.bind("<Return>", self.onBaudEntry)
+
+        self.controls2Frame = tk.PanedWindow(master=self)
+        self.controls2Frame.pack(fill=tk.BOTH,expand=False)
+
+        self.buttonEsptool = tk.Button(self.controls2Frame, text="esptool", command=self.onEsptool)
+        self.buttonEsptool.pack(side=tk.LEFT)
 
         self.textFrame = tk.PanedWindow(master=self)
         self.textFrame.pack(fill=tk.BOTH,expand=True)
@@ -176,6 +185,9 @@ class SerialFrame(tk.PanedWindow):
     
     def onClearscreen(self):
         self.text.delete("1.0", "end")
+
+    def onEsptool(self):
+        print("onEsptool")
 
     def onAttach(self):
         if self.intVarAttach.get():
