@@ -70,7 +70,7 @@ class SerialFrame(tk.PanedWindow):
         self.checkShowCR.pack(side=tk.LEFT)
 
         self.intVarTranslateCR = tk.IntVar()
-        self.intVarTranslateCR.set(1)
+        self.intVarTranslateCR.set(0)
         self.checkTranslateCR = tk.Checkbutton(self.controlsFrame, text = "CR->LF", variable=self.intVarTranslateCR)
         self.checkTranslateCR.pack(side=tk.LEFT)
 
@@ -238,25 +238,30 @@ class SerialFrame(tk.PanedWindow):
     
     def serialIteration(self):
         try:
-            try:
-                bytes = self.serial.read(self.serial.in_waiting)
-            except Exception as e:
-                print("serialIteration():", type(e), e.args)
-                return            
-            if not self.intVarShowCR.get():
-                bytes = bytes.replace(b"\r", b"")
-            elif self.intVarTranslateCR.get():
-                bytes = bytes.replace(b"\r", b"\n")
-            if self.intVarRepr.get() and len(bytes) > 0:
-                bytes = repr(bytes)[2:-1]
-            self.text.insert(tk.END, bytes)
-            if bytes == b"\n" and self.intVarTimestamps.get():
-                self.text.insert(tk.END, f"<{time.ctime().split()[3]}>\t")
-            if self.intVarAutoscroll.get():
-                self.text.see(tk.END)
+            inwaiting = self.serial.in_waiting
+            bytes = self.serial.read(inwaiting)
+            if len(bytes) < inwaiting:
+                raise Exception("bytes < self.serial.in_waiting")
         except Exception as e:
-            if not isinstance(e, UnicodeDecodeError):
-                print("serialIteration():",type(e), e.args)
+            print("serialIteration():", type(e), e.args)
+            return
+        if bytes:
+            self.processText(bytes)
+    
+    def processText(self, bytes = b""):
+        if self.intVarTranslateCR.get():
+            bytes = bytes.replace(b"\r", b"\n")
+        if not self.intVarShowCR.get():
+            bytes = bytes.replace(b"\r", b"")
+        bytesList = bytes.split(b"\n")
+        for x, bytes in enumerate(bytesList):
+            if self.intVarRepr.get() and len(bytesList[x]) > 0:
+                    bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
+            if self.intVarTimestamps.get() and x>0:
+                bytesList[x] = f"<{time.ctime().split()[3]}>\t".encode("utf-8") + bytesList[x]
+        self.text.insert(tk.END, b"\n".join(bytesList))
+        if self.intVarAutoscroll.get():
+            self.text.see(tk.END)
     
     def textAfter(self):
         self.text.after(10, self.textAfter)
