@@ -10,8 +10,7 @@ import tkinter.ttk as ttk
 import sys, time
 
 ''' BUG
-*** When repr is checked, and RTS is toggled too fast, the app hangs
-*** Also hangs in some cases when serial port misbehaves
+*** When repr is checked, and RTS is toggled too fast, the app hangs. Possibly due to silenced exceptions, or concurrent access, leading to mismatch between assumed available and actual available, with a timeout of None. But just setting timeout might not be enough, an explicit close/shutdown function needed, that takes care of everything (closing/noneing serial and gui stuff, such as turning off the serial iteration/loop), while a start function does the opposite. Remove __enter__/__exit as currently not relevant. serialIteration/Loop must detect the timeout scenario and initiate shutdown.
 '''
 
 '''TODO
@@ -240,18 +239,18 @@ class SerialFrame(tk.PanedWindow):
     def serialIteration(self):
         try:
             try:
-                byte = self.serial.read(self.serial.in_waiting)
+                bytes = self.serial.read(self.serial.in_waiting)
             except Exception as e:
                 print("serialIteration():", type(e), e.args)
                 return            
             if not self.intVarShowCR.get():
-                byte = byte.replace(b"\r", b"")
+                bytes = bytes.replace(b"\r", b"")
             elif self.intVarTranslateCR.get():
-                byte = byte.replace(b"\r", b"\n")
-            if self.intVarRepr.get() and len(byte) > 0:
-                byte = repr(byte)[2:-1]
-            self.text.insert(tk.END, byte)
-            if byte == b"\n" and self.intVarTimestamps.get():
+                bytes = bytes.replace(b"\r", b"\n")
+            if self.intVarRepr.get() and len(bytes) > 0:
+                bytes = repr(bytes)[2:-1]
+            self.text.insert(tk.END, bytes)
+            if bytes == b"\n" and self.intVarTimestamps.get():
                 self.text.insert(tk.END, f"<{time.ctime().split()[3]}>\t")
             if self.intVarAutoscroll.get():
                 self.text.see(tk.END)
@@ -263,8 +262,6 @@ class SerialFrame(tk.PanedWindow):
         self.text.after(10, self.textAfter)
         if self.serial and self.serial.isOpen():
             self.serialIteration()
-        else:
-            self.serial = None
 
     def onRts(self):
         try: self.serial.setRTS(self.intVarRts.get())
