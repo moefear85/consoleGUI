@@ -9,15 +9,6 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import sys, time
 
-''' BUG
-*** When repr is checked, and RTS is toggled too fast, the app hangs. Possibly due to silenced exceptions, or concurrent access, leading to mismatch between assumed available and actual available, with a timeout of None. But just setting timeout might not be enough, an explicit close/shutdown function needed, that takes care of everything (closing/noneing serial and gui stuff, such as turning off the serial iteration/loop), while a start function does the opposite. Remove __enter__/__exit as currently not relevant. serialIteration/Loop must detect the timeout scenario and initiate shutdown.
-'''
-
-'''TODO
-*** Process incoming backspace character correctly. Moreover, verify if arrow keys are being sent (correctly)
-*** Separate CR checkbox if necessary, one for input, one for output, since inputs expect it to have a different state than outputs
-'''
-
 class SerialFrame(tk.PanedWindow):
     bgColorEN = "gray12"
     fgColorEN = "white"
