@@ -263,6 +263,8 @@ class SerialFrame(tk.PanedWindow):
         self.text.after(10, self.textAfter)
         if self.serial and self.serial.isOpen():
             self.serialIteration()
+        else:
+            self.serial = None
 
     def onRts(self):
         try: self.serial.setRTS(self.intVarRts.get())
