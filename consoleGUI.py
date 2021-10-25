@@ -156,6 +156,7 @@ class SerialFrame(tk.PanedWindow):
     
     def __exit__(self, type, value, traceback):
         self.serial.close()
+        self.serial = None
 
     def startSerial(self):
         try:
@@ -199,7 +200,9 @@ class SerialFrame(tk.PanedWindow):
                 #print("Serial Closed")
                 self.serial.close()
             except Exception as e:
-                print("onAttach():", type(e), e.args)        
+                print("onAttach():", type(e), e.args)
+            finally:
+                self.serial = None
     
     def fPort(self, port = None, none=True):
         if port:
