@@ -27,7 +27,7 @@ class SerialFrame(tk.PanedWindow):
     alpha = 0.9
     alphaEN = False
 
-    def __init__(self, master=None, port=None, baudrate=115200, timeout=None):
+    def __init__(self, master=None, port=None, baudrate=115200, timeout=1000):
         if not master:
             master = tk.Tk()
         
