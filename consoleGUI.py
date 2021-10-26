@@ -97,13 +97,10 @@ class SerialFrame(tk.PanedWindow):
         self.controls2Frame = tk.PanedWindow(master=self)
         self.controls2Frame.pack(fill=tk.BOTH,expand=False)
 
-        self.intVarBackspace = tk.IntVar()
-        self.intVarBackspace.set(1)
-        self.checkBackspace = tk.Checkbutton(self.controls2Frame, text = "BS", variable=self.intVarBackspace)
-        self.checkBackspace.pack(side=tk.LEFT)
-
-        self.buttonEsptool = tk.Button(self.controls2Frame, text="esptool", command=self.onEsptool)
-        self.buttonEsptool.pack(side=tk.LEFT)
+        self.intVarEscape = tk.IntVar()
+        self.intVarEscape.set(1)
+        self.checkEscape = tk.Checkbutton(self.controls2Frame, text = "^[", variable=self.intVarEscape)
+        self.checkEscape.pack(side=tk.LEFT)
 
         self.textFrame = tk.PanedWindow(master=self)
         self.textFrame.pack(fill=tk.BOTH,expand=True)
@@ -262,7 +259,7 @@ class SerialFrame(tk.PanedWindow):
             if self.intVarAutoscroll.get():
                 self.text.see(tk.END)
             if len(backspaceByteList) > 1 and y < len(backspaceByteList)-1:
-                if self.intVarBackspace.get():
+                if self.intVarEscape.get():
                     self.text.delete(tk.END + "-2c")
                 else:
                     if self.intVarRepr.get():
