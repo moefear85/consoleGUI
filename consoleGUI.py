@@ -97,6 +97,11 @@ class SerialFrame(tk.PanedWindow):
         self.controls2Frame = tk.PanedWindow(master=self)
         self.controls2Frame.pack(fill=tk.BOTH,expand=False)
 
+        self.intVarBackspace = tk.IntVar()
+        self.intVarBackspace.set(1)
+        self.checkBackspace = tk.Checkbutton(self.controls2Frame, text = "BS", variable=self.intVarBackspace)
+        self.checkBackspace.pack(side=tk.LEFT)
+
         self.buttonEsptool = tk.Button(self.controls2Frame, text="esptool", command=self.onEsptool)
         self.buttonEsptool.pack(side=tk.LEFT)
 
@@ -240,19 +245,30 @@ class SerialFrame(tk.PanedWindow):
             self.processText(bytes)
     
     def processText(self, bytes = b""):
-        if self.intVarTranslateCR.get():
-            bytes = bytes.replace(b"\r", b"\n")
-        if not self.intVarShowCR.get():
-            bytes = bytes.replace(b"\r", b"")
-        bytesList = bytes.split(b"\n")
-        for x, bytes in enumerate(bytesList):
-            if self.intVarRepr.get() and len(bytesList[x]) > 0:
-                    bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
-            if self.intVarTimestamps.get() and x>0:
-                bytesList[x] = f"<{time.ctime().split()[3]}>\t".encode("utf-8") + bytesList[x]
-        self.text.insert(tk.END, b"\n".join(bytesList))
-        if self.intVarAutoscroll.get():
-            self.text.see(tk.END)
+        backspaceByteList = bytes.split(b'\x08\x1b[K')
+        print(backspaceByteList)
+        for y, bytes in enumerate(backspaceByteList): # Can't be same name as x
+            if self.intVarTranslateCR.get():
+                bytes = bytes.replace(b"\r", b"\n")
+            if not self.intVarShowCR.get():
+                bytes = bytes.replace(b"\r", b"")
+            bytesList = bytes.split(b"\n")
+            for x, bytes in enumerate(bytesList):
+                if self.intVarRepr.get() and len(bytesList[x]) > 0:
+                        bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
+                if self.intVarTimestamps.get() and x>0:
+                    bytesList[x] = f"<{time.ctime().split()[3]}>\t".encode("utf-8") + bytesList[x]
+            self.text.insert(tk.END, b"\n".join(bytesList))
+            if self.intVarAutoscroll.get():
+                self.text.see(tk.END)
+            if len(backspaceByteList) > 1 and y < len(backspaceByteList)-1:
+                if self.intVarBackspace.get():
+                    self.text.delete(tk.END + "-2c")
+                else:
+                    if self.intVarRepr.get():
+                        self.text.insert(tk.END, repr(b'\x08\x1b[K'))
+                    else:
+                        self.text.insert(tk.END, b'\x08\x1b[K')
     
     def textAfter(self):
         self.text.after(10, self.textAfter)
@@ -296,6 +312,7 @@ class SerialFrame(tk.PanedWindow):
             print("onBaudEntry():", type(e), e.args)
     
     def onTextKeyboard(self, arg):
+        print(arg)
         if self.intVarEcho.get():
             if arg.char == "\r" and self.intVarTranslateCR.get():
                 arg.char = "\n"
