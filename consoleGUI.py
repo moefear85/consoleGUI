@@ -336,7 +336,6 @@ class SerialFrame(tk.PanedWindow):
             #print(arg.char.encode("utf-8"), end="\r\n")
         except Exception as e:
             print("onTextKeyboard()",e.args)
-            pass
         return "break"
     
     def onMouseWheel(self, arg):
