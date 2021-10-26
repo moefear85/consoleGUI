@@ -312,7 +312,7 @@ class SerialFrame(tk.PanedWindow):
             print("onBaudEntry():", type(e), e.args)
     
     def onTextKeyboard(self, arg):
-        print(arg)
+        #print(arg)
         if self.intVarEcho.get():
             if arg.char == "\r" and self.intVarTranslateCR.get():
                 arg.char = "\n"
