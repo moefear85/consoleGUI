@@ -1,0 +1,9 @@
+''' TO FIX
+'''
+
+
+'''TODO
+*** Add millisecond timestamp support
+*** Process incoming backspace character correctly. Moreover, verify if arrow keys are being sent (correctly). Or locally impelement a history for Entry entries.
+*** Add Limit content length or linecount checkbox, to avoid becoming unbearably slow.
+'''
