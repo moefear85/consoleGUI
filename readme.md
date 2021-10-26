@@ -1,0 +1,1 @@
+I gave up on the PyMakr extension in VSCode long ago (too fragile). So I am coding my own serial monitor/console that combines simplicity with flexibility, whose UI is focussed on what I need.
