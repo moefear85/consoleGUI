@@ -246,7 +246,7 @@ class SerialFrame(tk.PanedWindow):
     
     def processText(self, bytes = b""):
         backspaceByteList = bytes.split(b'\x08\x1b[K')
-        print(backspaceByteList)
+        #print(backspaceByteList)
         for y, bytes in enumerate(backspaceByteList): # Can't be same name as x
             if self.intVarTranslateCR.get():
                 bytes = bytes.replace(b"\r", b"\n")
@@ -318,9 +318,24 @@ class SerialFrame(tk.PanedWindow):
                 arg.char = "\n"
             self.text.insert(tk.END, arg.char)
             self.text.see(tk.END)
-        try: self.serial.write(arg.char.encode("utf-8"))
+        if arg.keycode == 111: # UP
+            bytes = b"\x1B[A"
+        elif arg.keycode == 116: # DOWN
+            bytes = b"\x1B[B"
+        elif arg.keycode == 113: # LEFT
+            bytes = b"\x1B[D"
+        elif arg.keycode == 114: #RIGHT
+            bytes = b"\x1B[C"
+        else:
+            bytes = None
+        try:
+            if bytes:
+                self.serial.write(bytes)
+            else:
+                self.serial.write(arg.char.encode("utf-8"))
+            #print(arg.char.encode("utf-8"), end="\r\n")
         except Exception as e:
-            #print("onTextKeyboard()",e.args)
+            print("onTextKeyboard()",e.args)
             pass
         return "break"
     
