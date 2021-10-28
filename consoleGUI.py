@@ -264,9 +264,7 @@ class SerialFrame(tk.PanedWindow):
                     if match := re.search(pattern, bytes):
                         if match.group(2) == b"D" and match.group(1).isdigit():
                             self.cursor = int(match.group(1))
-                            print("cursor:", self.cursor)
                         elif match.group(2) == b"K":
-                            print("deleting", tk.END + f"-{self.cursor+1}c")
                             for x in range(self.cursor):
                                 self.text.delete(tk.END + "-2c")
                         else:
