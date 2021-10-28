@@ -284,7 +284,7 @@ class SerialFrame(tk.PanedWindow):
             if self.intVarRepr.get() and len(bytesList[x]) > 0:
                     bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
             if self.intVarTimestamps.get() and x>0:
-                bytesList[x] = f"<{time.ctime().split()[3]}>\t".encode("utf-8") + bytesList[x]
+                bytesList[x] = f"<{time.ctime().split()[3]}:{round(time.time()%1*1000):3d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
         while self.cursor > 0:
             self.text.delete(tk.END + "-2c")
             self.cursor -=1
