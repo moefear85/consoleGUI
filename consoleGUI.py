@@ -7,17 +7,25 @@ from select import poll
 from _thread import start_new_thread as start
 import tkinter as tk
 import tkinter.ttk as ttk
-import sys, time
+import sys, time, re
+
+class state:
+    normal = 0
+    buffering = 1
 
 class SerialFrame(tk.PanedWindow):
     bgColorEN = "gray12"
     fgColorEN = "white"
     fgColorD = "black"
     bgColorD = "gray"
-    alpha = 0.9
-    alphaEN = False
 
     def __init__(self, master=None, port=None, baudrate=115200, timeout=1000):
+        self.alpha = 0.9
+        self.alphaEN = False
+        self.state = state.normal
+        self.buffer = b""
+        self.cursor = 0
+
         if not master:
             master = tk.Tk()
         
@@ -238,34 +246,53 @@ class SerialFrame(tk.PanedWindow):
         except Exception as e:
             print("serialIteration():", type(e), e.args)
             return
-        if bytes:
-            self.processText(bytes)
+        if self.buffer or bytes:
+            self.processText(self.buffer + bytes)
     
     def processText(self, bytes = b""):
-        backspaceByteList = bytes.split(b'\x08\x1b[K')
-        #print(backspaceByteList)
-        for y, bytes in enumerate(backspaceByteList): # Can't be same name as x
-            if self.intVarTranslateCR.get():
-                bytes = bytes.replace(b"\r", b"\n")
-            if not self.intVarShowCR.get():
-                bytes = bytes.replace(b"\r", b"")
-            bytesList = bytes.split(b"\n")
-            for x, bytes in enumerate(bytesList):
-                if self.intVarRepr.get() and len(bytesList[x]) > 0:
-                        bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
-                if self.intVarTimestamps.get() and x>0:
-                    bytesList[x] = f"<{time.ctime().split()[3]}>\t".encode("utf-8") + bytesList[x]
-            self.text.insert(tk.END, b"\n".join(bytesList))
-            if self.intVarAutoscroll.get():
-                self.text.see(tk.END)
-            if len(backspaceByteList) > 1 and y < len(backspaceByteList)-1:
-                if self.intVarEscape.get():
+        if self.intVarEscape.get() and not self.intVarRepr.get():        
+            pattern = b"([\b])|([\x1b])"
+            while match := re.search(pattern, bytes):
+                if  match.group(1):
+                    self._processText(bytes[:match.start()])
                     self.text.delete(tk.END + "-2c")
-                else:
-                    if self.intVarRepr.get():
-                        self.text.insert(tk.END, repr(b'\x08\x1b[K'))
+                    bytes = bytes[match.end():]
+                elif match.group(2):
+                    self._processText(bytes[:match.start()])
+                    bytes = bytes[match.start():]
+                    pattern = b"\x1b\[([\x30-\x3F]*)[\x20-\x2F]*([\x40-\x7E])"
+                    if match := re.search(pattern, bytes):
+                        if match.group(2) == b"D" and match.group(1).isdigit():
+                            self.cursor = int(match.group(1))
+                            print("cursor:", self.cursor)
+                        elif match.group(2) == b"K":
+                            print("deleting", tk.END + f"-{self.cursor+1}c")
+                            for x in range(self.cursor):
+                                self.text.delete(tk.END + "-2c")
+                        else:
+                            raise("Unknown Escape Sequence")
+                        bytes = bytes[match.end():]
                     else:
-                        self.text.insert(tk.END, b'\x08\x1b[K')
+                        raise Exception("Incomplete Escape Sequence")
+        self._processText(bytes)
+    
+    def _processText(self, bytes = b""):
+        if self.intVarTranslateCR.get():
+            bytes = bytes.replace(b"\r", b"\n")
+        if not self.intVarShowCR.get():
+            bytes = bytes.replace(b"\r", b"")
+        bytesList = bytes.split(b"\n")
+        for x, bytes in enumerate(bytesList):
+            if self.intVarRepr.get() and len(bytesList[x]) > 0:
+                    bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
+            if self.intVarTimestamps.get() and x>0:
+                bytesList[x] = f"<{time.ctime().split()[3]}>\t".encode("utf-8") + bytesList[x]
+        while self.cursor > 0:
+            self.text.delete(tk.END + "-2c")
+            self.cursor -=1
+        self.text.insert(tk.END, b"\n".join(bytesList))
+        if self.intVarAutoscroll.get():
+            self.text.see(tk.END)
     
     def textAfter(self):
         self.text.after(10, self.textAfter)
