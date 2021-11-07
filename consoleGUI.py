@@ -3,7 +3,7 @@
 from serial import Serial
 import serial.serialutil
 from time import sleep
-from select import poll
+#from select import poll
 from _thread import start_new_thread as start
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -106,7 +106,7 @@ class SerialFrame(tk.PanedWindow):
         self.controls2Frame.pack(fill=tk.BOTH,expand=False)
 
         self.intVarEscape = tk.IntVar()
-        self.intVarEscape.set(1)
+        self.intVarEscape.set(0)
         self.checkEscape = tk.Checkbutton(self.controls2Frame, text = "^[", variable=self.intVarEscape)
         self.checkEscape.pack(side=tk.LEFT)
 
