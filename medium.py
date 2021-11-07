@@ -1,0 +1,1 @@
+/media/moefear85/BACKUP/Projects/Programming/Python/Bridges & Adapters/medium.py
