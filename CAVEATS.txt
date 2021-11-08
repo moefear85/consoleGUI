@@ -1,0 +1,2 @@
+* It seems most likely when a socket is non-blocking (or equivalently timeout is set to 0), then if there is no data, a BlockingIOError is raised, whereas if the remote is closed, it silently returns with no data.
+* atleast UDP sockets, won't raise any exception despite broken/closed remote end, until atleast 2 packets have been sent, probably due to buffering issues

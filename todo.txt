@@ -3,6 +3,5 @@
 
 
 '''TODO
-*** Add millisecond timestamp support
 *** Add Limit content length or linecount checkbox, to avoid becoming unbearably slow.
 '''

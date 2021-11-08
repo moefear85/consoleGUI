@@ -1,41 +1,39 @@
 #! /usr/bin/python
 
+from socket import MSG_DONTWAIT, socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM,SOL_SOCKET,TCP_NODELAY,IPPROTO_TCP,SO_REUSEADDR,timeout as SocketTimeout
 from serial import Serial
-import serial.serialutil
-from time import sleep
-#from select import poll
-from _thread import start_new_thread as start
+from time import ctime,sleep,time
 import tkinter as tk
-import tkinter.ttk as ttk
-import sys, time, re
+import sys,re
 
-class state:
-    normal = 0
-    buffering = 1
-
-class SerialFrame(tk.PanedWindow):
+class ConsoleGUI(tk.PanedWindow):
     bgColorEN = "gray12"
     fgColorEN = "white"
     fgColorD = "black"
     bgColorD = "gray"
 
-    def __init__(self, master=None, port=None, baudrate=115200, timeout=1000):
+    enumBootmode = 0
+    enumBaudrate = 1
+    enumPing = 2
+
+    def __init__(self, master=None, port="127.0.0.1:4001", baudrate=115200, timeoutSerial=1,timeoutSocket=3):
         self.alpha = 0.9
         self.alphaEN = False
-        self.state = state.normal
         self.buffer = b""
         self.cursor = 0
 
         if not master:
             master = tk.Tk()
         
+        self.timeoutSerial = timeoutSerial
+        self.timeoutSocket = timeoutSocket
+        self.address=self.serial=self.tcp=self.udp=self.type=None
+
         self.stringVarPort = tk.StringVar()
-        self.fPort(port)
-        self.baudrate = baudrate
-        self.timeout = timeout
+        self.stringVarPort.set(port)
 
         if isinstance(master, tk.Tk):
-            master.title(self.fPort(none=False))
+            master.title(port)
         
         super().__init__(master=master)
         super().pack(fill=tk.BOTH,expand=True)
@@ -89,7 +87,7 @@ class SerialFrame(tk.PanedWindow):
         self.checkAutoscroll = tk.Checkbutton(self.controlsFrame, text = "Autoscroll", variable=self.intVarAutoscroll)
         self.checkAutoscroll.pack(side=tk.RIGHT)
 
-        self.entryPort = tk.Entry(master=self.controlsFrame, textvariable=self.stringVarPort, width=13)
+        self.entryPort = tk.Entry(master=self.controlsFrame, textvariable=self.stringVarPort, width=16)
         self.entryPort.pack(side=tk.RIGHT, expand=False)
         self.entryPort.bind("<Return>", self.onPortEntry)
 
@@ -144,110 +142,141 @@ class SerialFrame(tk.PanedWindow):
         self.entryCommand.bind("<Return>", self.onCommandEntry)
 
         if isinstance(self.master, tk.Tk):
-            self.master.geometry("800x550")
-        
-        self.onPortEntry(None)
+            self.master.geometry("850x550")
 
+        self.close()
+        self.onPortEntry()
         self.textAfter()
-    
-    def __enter__(self):
-        self.serial = Serial(port = self.fPort(), timeout=self.timeout, baudrate = self.baudrate)
-        return self
-    
-    def __exit__(self, type, value, traceback):
-        self.serial.close()
-        self.serial = None
 
+    def start(self):
+        try:
+            result=None
+            if self.type == "serial":
+                result = self.startSerial()
+            elif self.type == "socket":
+                result = self.startSocket()
+            elif self.type: raise Exception("ConsoleGUI.start(): Unknown Port Type:",self.type)
+            if result:
+                self.text.configure(state='normal', foreground=self.fgColorEN, background=self.bgColorEN)
+                self.entryCommand.configure(state='normal', foreground=self.fgColorEN, background=self.bgColorEN)
+            else: self.close()
+        except Exception as e:
+            print("consoleGUI.start():",type(e), e.args)
+            self.close()
+    
+    def startSocket(self):
+        try:
+            self.udp = socket(AF_INET, SOCK_DGRAM)
+            self.udp.connect(self.address)
+            self.tcp = socket(AF_INET, SOCK_STREAM)
+            self.tcp.setsockopt(SOL_SOCKET,SO_REUSEADDR, 2)
+            self.tcp.settimeout(self.timeoutSocket)
+            self.tcp.connect(self.address)
+            print(f"SocketMedium.connect(): Connected to {self.address}")
+            self.tcp.settimeout(0)
+            self.tcp.setsockopt(IPPROTO_TCP,TCP_NODELAY,1)
+            return True
+        except SocketTimeout as e:
+            print("consoleGUI.startSocket():", type(e), e.args)
+            pass
+        except ConnectionRefusedError:
+            print(f"Connection to {self.address} failed -- {ctime()}")
+        except Exception as e:
+            print("consoleGUI.startSocket():",type(e), e.args,"-- SocketMedium Closed")
+            self.close()
+            return
+    
     def startSerial(self):
         try:
-            self.text.configure(state='normal', foreground=self.fgColorEN, background=self.bgColorEN)
-            self.entryCommand.configure(state='normal', foreground=self.fgColorEN, background=self.bgColorEN)
-            self.__enter__()
+            self.serial = Serial(port = self.stringVarPort.get(), timeout=self.timeoutSerial, baudrate = int(self.stringVarBaud.get()))
             self.serial.setDTR(self.intVarDtr.get())
             self.serial.setRTS(self.intVarRts.get())
-            #start(self.serialLoop, ())
+            return True
         except Exception as e:
-            if isinstance(e, serial.serialutil.SerialException) and e.args[0] == 2:
-                #print("Serial Closed")
-                pass
-            else:
-                print("startSerial():",type(e),len(e.args), e.args)
-                #self.configure(state='disable') Don't uncomment. Throws bogus TclError attempting to pass "state" to self.serial
-                #self.textFrame.configure(state='disable') Don't uncomment. Same Reason
-            self.text.configure(state='disable', foreground=self.fgColorD, background=self.bgColorD)
-            self.entryCommand.configure(state='disable', foreground=self.fgColorD, background=self.bgColorD)
-    
-    def onPortEntry(self, arg):
-        port = self.fPort()
-        try: self.master.title(port)
+            print("startSerial():",type(e),len(e.args), e.args)
+            self.close()
+        return False
+            
+    def close(self):
+        try:
+            self.text.configure(state='disabled', foreground=self.fgColorD, background=self.bgColorD)
+            self.entryCommand.configure(state='disabled', foreground=self.fgColorD, background=self.bgColorD)
+            #self.intVarAttach.set(0)
+            if self.type:
+                if self.type=="serial":
+                    if self.serial:
+                        self.serial.close()
+                        self.serial = None
+                elif self.type=="socket":
+                    if self.tcp:
+                        self.tcp.shutdown(SHUT_RDWR)
+                        self.tcp.close()
+                    if self.udp:
+                        self.udp.close()
+                    self.tcp=self.udp=None
+                else: raise Exception("ConsoleGUI.close(): Unknown Port Type:",self.type)
+        except OSError as e:
+            if e.errno == 107: pass
+            else: print("ConsoleGUI.close():",type(e),e.args)
         except Exception as e:
-            print("onPortEntry():", type(e), e.args)
-        self.onAttach()
+            print("ConsoleGUI.close():",type(e),e.args)
     
+    def onPortEntry(self, arg1=None,arg2=None,arg3=None):
+        try:
+            if self.stringVarPort.get():            
+                match = re.search("(\d+\.\d+\.\d+\.\d+)",self.stringVarPort.get())
+                if match:
+                    self.type="socket"
+                    address = self.stringVarPort.get().split(":")
+                    self.address=(address[0],int(address[1]))
+                else:
+                    self.type="serial"
+                try: self.master.title(self.stringVarPort.get())
+                except Exception as e:
+                    pass
+                self.onAttach()
+        except Exception as e:
+            print("ConsoleGUI.onPortEntry():",type(e),e.args)
+            self.close()
+    
+    def onAttach(self):
+        if self.intVarAttach.get(): self.start()
+        else: self.close()
+
     def onClearscreen(self):
         self.text.delete("1.0", "end")
 
     def onEsptool(self):
         print("onEsptool")
-
-    def onAttach(self):
-        if self.intVarAttach.get():
-            self.startSerial()
-        else:
-            self.text.configure(state='disable', foreground=self.fgColorD, background=self.bgColorD)
-            self.entryCommand.configure(state='disable', foreground=self.fgColorD, background=self.bgColorD)
-            try:
-                #print("Serial Closed")
-                self.serial.close()
-            except Exception as e:
-                print("onAttach():", type(e), e.args)
-            finally:
-                self.serial = None
-    
-    def fPort(self, port = None, none=True):
-        if port:
-            self.stringVarPort.set(port)
-            #self.onPortEntry(None)
-        elif not none:
-            return self.stringVarPort.get()
-        elif self.stringVarPort.get() == "":
-            return None
-        else:
-            return self.stringVarPort.get()
-    
-    def serialLoop(self):
+   
+    def serialRead(self):
         try:
-            while True:
-                #self.serial.in_waiting
-                try:
-                    byte = self.serial.read(1)
-                except Exception as e:
-                    print("serialLoop():", type(e), e.args)
-                    return
-                if byte == b"\r":
-                    if not self.intVarShowCR.get():
-                        byte = b''
-                    elif self.intVarTranslateCR.get():
-                        byte = b"\n"
-                if self.intVarRepr.get():
-                    byte = repr(byte)[2:-1]
-                self.text.insert(tk.END, byte)
-                if self.intVarAutoscroll.get():
-                    self.text.see(tk.END)
+            if self.serial:
+                inwaiting = self.serial.in_waiting
+                bytes = self.serial.read(inwaiting)
+                if len(bytes) < inwaiting:
+                    raise Exception("bytes < self.serial.in_waiting")
+                if self.buffer or bytes:
+                    self.processText(self.buffer + bytes)
         except Exception as e:
-            print("serialLoop():",type(e), e.args)
-    
-    def serialIteration(self):
-        try:
-            inwaiting = self.serial.in_waiting
-            bytes = self.serial.read(inwaiting)
-            if len(bytes) < inwaiting:
-                raise Exception("bytes < self.serial.in_waiting")
-        except Exception as e:
-            print("serialIteration():", type(e), e.args)
+            print("ConsoleGUI.serialRead():", type(e), e.args)
             return
-        if self.buffer or bytes:
-            self.processText(self.buffer + bytes)
+    
+    def socketRead(self):
+        try:
+            if self.tcp:
+                try:
+                    blockingError=False
+                    bytes = self.tcp.recv(100)
+                except BlockingIOError as e:
+                    bytes=b""
+                    blockingError = True
+                    if e.errno == 11: pass
+                    else: print(e.args)
+                if not blockingError and not bytes: self.close()
+                if self.buffer or bytes: self.processText(self.buffer + bytes)
+        except Exception as e:
+            print("consoleGUI.socketRead():", type(e), e.args)
     
     def processText(self, bytes = b""):
         if self.intVarEscape.get() and not self.intVarRepr.get():        
@@ -284,7 +313,7 @@ class SerialFrame(tk.PanedWindow):
             if self.intVarRepr.get() and len(bytesList[x]) > 0:
                     bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
             if self.intVarTimestamps.get() and x>0:
-                bytesList[x] = f"<{time.ctime().split()[3]}:{round(time.time()%1*1000):03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
+                bytesList[x] = f"<{ctime().split()[3]}:{round(time()%1*1000):03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
         while self.cursor > 0:
             self.text.delete(tk.END + "-2c")
             self.cursor -=1
@@ -293,17 +322,36 @@ class SerialFrame(tk.PanedWindow):
             self.text.see(tk.END)
     
     def textAfter(self):
-        self.text.after(10, self.textAfter)
-        if self.serial and self.serial.isOpen():
-            self.serialIteration()
+        try:
+            self.text.after(10, self.textAfter)
+            if self.type=="serial":
+                self.serialRead()
+            elif self.type=="socket":
+                self.socketRead()
+            #elif self.type:
+            #    raise Exception("consoleGUI.textAfter(): Unknown Type")
+        except Exception as e:
+            print("ConsoleGUI.textAfter():",type(e),e.args)
 
     def onRts(self):
-        try: self.serial.setRTS(self.intVarRts.get())
+        try:
+            if self.type=="serial":
+                self.serial.setRTS(self.intVarRts.get())
+            elif self.type=="socket":
+                self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
+        except ConnectionRefusedError:
+            self.close()
         except Exception as e:
             print("onRts():", type(e), e.args)
     
     def onDtr(self):
-        try: self.serial.setDTR(self.intVarDtr.get())
+        try:
+            if self.type=="serial":
+                self.serial.setDTR(not self.intVarDtr.get())
+            elif self.type=="socket":
+                self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
+        except ConnectionRefusedError:
+            self.close()
         except Exception as e:
             print("onDtr():", type(e), e.args)
 
@@ -326,10 +374,14 @@ class SerialFrame(tk.PanedWindow):
             print("onCommandEntry():", type(e), e.args)
     
     def onBaudEntry(self, arg):
-        self.baudrate=int(self.stringVarBaud.get())
-        print(self.baudrate)
+        baudrate=int(self.stringVarBaud.get())
         try:
-            self.serial.baudrate = self.baudrate
+            if self.type=="serial":
+                self.serial.baudrate = baudrate
+            elif self.type=="socket":
+                self.udp.send(ConsoleGUI.enumBaudrate.to_bytes(1,"big")+baudrate.to_bytes(4,"big"))
+        except ConnectionRefusedError:
+            self.close()
         except Exception as e:
             print("onBaudEntry():", type(e), e.args)
     
@@ -349,15 +401,16 @@ class SerialFrame(tk.PanedWindow):
         elif arg.keycode == 114: #RIGHT
             bytes = b"\x1B[C"
         else:
-            bytes = None
+            bytes = arg.char.encode("utf-8")
         try:
-            if bytes:
+            if self.type=="serial":
                 self.serial.write(bytes)
-            else:
-                self.serial.write(arg.char.encode("utf-8"))
-            #print(arg.char.encode("utf-8"), end="\r\n")
+            elif self.type=="socket":
+                self.tcp.send(bytes)
+        except BrokenPipeError:
+            self.close()
         except Exception as e:
-            print("onTextKeyboard()",e.args)
+            print("ConsoleGUI.onTextKeyboard()",type(e),e.args)
         return "break"
     
     def onMouseWheel(self, arg):
@@ -377,24 +430,6 @@ class SerialFrame(tk.PanedWindow):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        SerialFrame(port=sys.argv[1]).mainloop()
+        ConsoleGUI(port=sys.argv[1]).mainloop()
     else:
-        SerialFrame().mainloop()
-
-'''
-notebook = ttk.Notebook(width=800, height=550)
-notebook.pack(fill=tk.BOTH, expand=True)
-frame1 = SerialFrame(master=notebook, port="/dev/ttyACM1")
-frame2 = SerialFrame(master=notebook, port="/dev/ttyACM2")
-notebook.add(frame1, text=frame1.fPort(none=False))
-notebook.add(frame2, text=frame2.fPort(none=False))
-notebook.mainloop()
-'''
-'''
-app = tk.Tk()
-frame = SerialFrame(master=app, port="/dev/ttyACM1")
-app.mainloop()
-'''
-'''
-SerialFrame(port="/dev/ttyACM1").mainloop()
-'''
+        ConsoleGUI().mainloop()
