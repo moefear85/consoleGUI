@@ -257,7 +257,10 @@ class ConsoleGUI(tk.PanedWindow):
             print("ConsoleGUI.onAttach():", type(e),e.args)
 
     def onClearscreen(self):
+        _state=self.text.config("state")[4]
+        self.text.configure(state="normal")
         self.text.delete("1.0", "end")
+        self.text.configure(state=_state)
 
     def onEsptool(self):
         print("onEsptool")
@@ -333,7 +336,7 @@ class ConsoleGUI(tk.PanedWindow):
         
         lineLengthLimit=int(self.stringVarLength.get())
         for x,line in enumerate(bytesList):
-            print("line length:",self.text.index(tk.END+"-1c").split(".")[1])
+            #print("line length:",self.text.index(tk.END+"-1c").split(".")[1])
             diff=lineLengthLimit-int(self.text.index(tk.END+"-1c").split(".")[1])
             while len(line)>diff:
                 self.text.insert(tk.END, line[0:diff]+b"\n")
