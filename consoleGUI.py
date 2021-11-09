@@ -108,7 +108,7 @@ class ConsoleGUI(tk.PanedWindow):
         self.checkEscape = tk.Checkbutton(self.controls2Frame, text = "^[", variable=self.intVarEscape)
         self.checkEscape.pack(side=tk.LEFT)
 
-        self.stringVarLength=tk.StringVar(value=1000)
+        self.stringVarLength=tk.StringVar(value=500)
         self.entryLength = tk.Entry(master=self.controls2Frame,textvariable=self.stringVarLength,width=6)
         self.entryLength.pack(side=tk.RIGHT)
 
@@ -330,13 +330,16 @@ class ConsoleGUI(tk.PanedWindow):
         while self.cursor > 0:
             self.text.delete(tk.END + "-2c")
             self.cursor -=1
+        
         lineLengthLimit=int(self.stringVarLength.get())
         for x,line in enumerate(bytesList):
-            diff=lineLengthLimit-int(self.text.index(tk.END).split(".")[1])
+            print("line length:",self.text.index(tk.END+"-1c").split(".")[1])
+            diff=lineLengthLimit-int(self.text.index(tk.END+"-1c").split(".")[1])
             while len(line)>diff:
-                self.text.insert(tk.END, line[0:diff]+"\n")
+                self.text.insert(tk.END, line[0:diff]+b"\n")
                 line=line[diff:]
-                diff=lineLengthLimit-int(self.text.index(tk.END).split(".")[1])
+                diff=lineLengthLimit-int(self.text.index(tk.END+"-1c").split(".")[1])
+            self.text.insert(tk.END, line[0:diff])
             if x<len(bytesList)-1:
                 self.text.insert(tk.END, "\n")
         if self.intVarAutoscroll.get():
@@ -450,6 +453,7 @@ class ConsoleGUI(tk.PanedWindow):
             except:
                 pass
 
+import os
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         ConsoleGUI(port=sys.argv[1]).mainloop()
