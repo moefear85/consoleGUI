@@ -240,8 +240,14 @@ class ConsoleGUI(tk.PanedWindow):
             self.close()
     
     def onAttach(self):
-        if self.intVarAttach.get(): self.start()
-        else: self.close()
+        try:
+            if self.intVarAttach.get():
+                self.start()
+                self.onBaudEntry(None)
+            else:
+                self.close()
+        except Exception as e:
+            print("ConsoleGUI.onAttach():", type(e),e.args)
 
     def onClearscreen(self):
         self.text.delete("1.0", "end")
@@ -347,7 +353,7 @@ class ConsoleGUI(tk.PanedWindow):
     def onDtr(self):
         try:
             if self.type=="serial":
-                self.serial.setDTR(not self.intVarDtr.get())
+                self.serial.setDTR(self.intVarDtr.get())
             elif self.type=="socket":
                 self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
         except ConnectionRefusedError:
@@ -375,6 +381,7 @@ class ConsoleGUI(tk.PanedWindow):
     
     def onBaudEntry(self, arg):
         baudrate=int(self.stringVarBaud.get())
+        print("ConsoleGUI.onBaudEntry():",baudrate)
         try:
             if self.type=="serial":
                 self.serial.baudrate = baudrate
