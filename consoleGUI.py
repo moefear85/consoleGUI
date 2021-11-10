@@ -4,7 +4,7 @@ from socket import MSG_DONTWAIT, socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM
 from serial import Serial
 from time import ctime,sleep,time
 import tkinter as tk
-import sys,re
+import sys,re,pyperclip
 
 class ConsoleGUI(tk.PanedWindow):
     bgColorEN = "gray12"
@@ -49,7 +49,7 @@ class ConsoleGUI(tk.PanedWindow):
         
         #self.master.attributes('-topmost', True)
         #self.master.update()
-
+        
         self.controlsFrame = tk.PanedWindow(master=self)
         self.controlsFrame.pack(fill=tk.BOTH,expand=False)
 
@@ -115,6 +115,10 @@ class ConsoleGUI(tk.PanedWindow):
         self.labelLength=tk.Label(master=self.controls2Frame,text="Col Lim")
         self.labelLength.pack(side=tk.RIGHT)
 
+        self.boolVarCapture=tk.BooleanVar(value=True)
+        self.checkCapture = tk.Checkbutton(master=self.controls2Frame, text="Capture",variable=self.boolVarCapture,command=self.onCapture)
+        self.checkCapture.pack(side=tk.LEFT)
+
         self.textFrame = tk.PanedWindow(master=self)
         self.textFrame.pack(fill=tk.BOTH,expand=True)
         
@@ -125,6 +129,12 @@ class ConsoleGUI(tk.PanedWindow):
         self.text.pack(fill=tk.BOTH,expand=True)
         self.text.config(yscrollcommand=self.textScrollbar.set)
         self.text.bind("<Key>", self.onTextKeyboard)
+        self.text.bind("<Button-3>", self.onRightClick)
+
+        self.menu = tk.Menu(master=self.text,tearoff=0)
+        self.menu.add_command(label="Copy",command=self.onCopy)
+        self.menu.add_command(label="Paste",command=self.onPaste)
+        #self.master.config(menu=self.menu)
         
         self.textScrollbar.config(command=self.text.yview)
 
@@ -414,22 +424,27 @@ class ConsoleGUI(tk.PanedWindow):
             print("onBaudEntry():", type(e), e.args)
     
     def onTextKeyboard(self, arg):
-        #print(arg)
-        if self.intVarEcho.get():
-            if arg.char == "\r" and self.intVarTranslateCR.get():
-                arg.char = "\n"
-            self.text.insert(tk.END, arg.char)
-            self.text.see(tk.END)
-        if arg.keycode == 111: # UP
-            bytes = b"\x1B[A"
-        elif arg.keycode == 116: # DOWN
-            bytes = b"\x1B[B"
-        elif arg.keycode == 113: # LEFT
-            bytes = b"\x1B[D"
-        elif arg.keycode == 114: #RIGHT
-            bytes = b"\x1B[C"
+        if isinstance(arg,str):
+            char=arg
+            bytes = char.encode("utf-8")
         else:
-            bytes = arg.char.encode("utf-8")
+            char=arg.char
+            if arg.keycode == 111: # UP
+                bytes = b"\x1B[A"
+            elif arg.keycode == 116: # DOWN
+                bytes = b"\x1B[B"
+            elif arg.keycode == 113: # LEFT
+                bytes = b"\x1B[D"
+            elif arg.keycode == 114: #RIGHT
+                bytes = b"\x1B[C"
+            else:
+                bytes = char.encode("utf-8")
+        
+        if self.intVarEcho.get():
+            if self.intVarTranslateCR.get():
+                char.replace("\r","\n")
+            self._processText(char.encode("utf-8"))
+        
         try:
             if self.type=="serial":
                 self.serial.write(bytes)
@@ -456,7 +471,28 @@ class ConsoleGUI(tk.PanedWindow):
             except:
                 pass
 
-import os
+    def onRightClick(self,arg):
+        self.clickX=arg.x
+        self.clickY=arg.y
+        self.menu.tk_popup(arg.x_root, arg.y_root)
+    
+    def onCopy(self):
+        #print("onCopy",self.clickX,self.clickY)
+        pyperclip.copy(self.text.selection_get())
+    
+    def onPaste(self):
+        #self.text.insert("end",pyperclip.paste())
+        #print("onPaste",self.clickX,self.clickY)
+        self.onTextKeyboard(pyperclip.paste())
+
+    def onCapture(self):
+        if self.boolVarCapture.get():
+            print("bind")
+            self.text.bind("<Key>", self.onTextKeyboard)
+        else:
+            print("Unbind")
+            self.text.unbind("<Key>")
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         ConsoleGUI(port=sys.argv[1]).mainloop()
