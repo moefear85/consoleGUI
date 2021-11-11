@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args":["/dev/ttyACM2"]
+            "args":["127.0.0.1:4001"]
         }
     ]
 }

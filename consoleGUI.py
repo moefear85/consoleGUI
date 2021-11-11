@@ -21,6 +21,7 @@ class ConsoleGUI(tk.PanedWindow):
         self.alphaEN = False
         self.buffer = b""
         self.cursor = 0
+        self.i = 0
 
         if not master:
             master = tk.Tk()
@@ -282,8 +283,7 @@ class ConsoleGUI(tk.PanedWindow):
                 bytes = self.serial.read(inwaiting)
                 if len(bytes) < inwaiting:
                     raise Exception("bytes < self.serial.in_waiting")
-                if self.buffer or bytes:
-                    self.processText(self.buffer + bytes)
+                if bytes: self.processText(self.buffer + bytes)
         except OSError as e:
             if e.errno==5:pass
             else: print("ConsoleGUI.serialRead():", type(e), e.args)
@@ -305,14 +305,18 @@ class ConsoleGUI(tk.PanedWindow):
                     if e.errno == 11: pass
                     else: print(e.args)
                 if not blockingError and not bytes: self.close()
-                if self.buffer or bytes: self.processText(self.buffer + bytes)
+                if bytes: self.processText(self.buffer + bytes)
         except Exception as e:
             print("consoleGUI.socketRead():", type(e), e.args)
     
     def processText(self, bytes = b""):
-        if self.intVarEscape.get() and not self.intVarRepr.get():        
-            pattern = b"([\b])|([\x1b])"
+        self.i +=1
+        print(f"\n\nIteration {self.i}","\nLast Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+        if self.intVarEscape.get() and not self.intVarRepr.get():
+            pattern = rb"([\b])|([\x1b])"
             while match := re.search(pattern, bytes):
+                print("")
+                #print("buffer:",self.buffer,"bytes:",bytes," ----------- ","match:",match.group())
                 if  match.group(1):
                     self._processText(bytes[:match.start()])
                     self.text.delete(tk.END + "-2c")
@@ -320,48 +324,68 @@ class ConsoleGUI(tk.PanedWindow):
                 elif match.group(2):
                     self._processText(bytes[:match.start()])
                     bytes = bytes[match.start():]
-                    pattern = b"\x1b\[([\x30-\x3F]*)[\x20-\x2F]*([\x40-\x7E])"
+                    pattern = rb"\x1b\[([\x30-\x3F]*)[\x20-\x2F]*([\x40-\x7E])"
                     if match := re.search(pattern, bytes):
+                        print("Incoming bytes:",bytes," ----------- ","match:",match.group())
                         if match.group(2) == b"D" and match.group(1).isdigit():
-                            self.cursor = int(match.group(1))
+                            self.cursor += int(match.group(1))
+                            print("Setting Cursor Position:",self.cursor)
+                            print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
                         elif match.group(2) == b"K":
-                            for x in range(self.cursor):
-                                self.text.delete(tk.END + "-2c")
+                            print(f"Deleting {self.cursor} chars")
+                            if self.cursor>0:
+                                self.text.delete(f"end-{1+self.cursor}c","end")
+                                self.cursor=0
+                            else:
+                                print("Cursor already at 0! Deleting Nothing!")
+                            print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
                         else:
                             raise("Unknown Escape Sequence")
                         bytes = bytes[match.end():]
                     else:
-                        raise Exception("Incomplete Escape Sequence")
+                        self.buffer=bytes
+                        #print("Incomplete Escape Sequence")
+                        return
+            self.buffer=b""
         self._processText(bytes)
+        #print("Last Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
     
     def _processText(self, bytes = b""):
-        if self.intVarTranslateCR.get():
-            bytes = bytes.replace(b"\r", b"\n")
-        if not self.intVarShowCR.get():
-            bytes = bytes.replace(b"\r", b"")
-        bytesList = bytes.split(b"\n")
-        for x, bytes in enumerate(bytesList):
-            if self.intVarRepr.get() and len(bytesList[x]) > 0:
-                    bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
-            if self.intVarTimestamps.get() and x>0:
-                bytesList[x] = f"<{ctime().split()[3]}:{round(time()%1*1000)%1000:03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
-        while self.cursor > 0:
-            self.text.delete(tk.END + "-2c")
-            self.cursor -=1
-        
-        lineLengthLimit=int(self.stringVarLength.get())
-        for x,line in enumerate(bytesList):
-            #print("line length:",self.text.index(tk.END+"-1c").split(".")[1])
-            diff=lineLengthLimit-int(self.text.index(tk.END+"-1c").split(".")[1])
-            while len(line)>diff:
-                self.text.insert(tk.END, line[0:diff]+b"\n")
-                line=line[diff:]
+        if bytes:
+            if self.intVarTranslateCR.get():
+                bytes = bytes.replace(b"\r", b"\n")
+            if not self.intVarShowCR.get():
+                bytes = bytes.replace(b"\r", b" ")
+            bytesList = bytes.split(b"\n")
+            for x, bytes in enumerate(bytesList):
+                if self.intVarRepr.get() and len(bytesList[x]) > 0:
+                        bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
+                if self.intVarTimestamps.get() and x>0:
+                    bytesList[x] = f"<{ctime().split()[3]}:{round(time()%1*1000)%1000:03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
+            if self.cursor>0:
+                print(f"Overwriting {self.cursor} chars.")
+                self.text.delete(f"end-{1+self.cursor}c", "end")
+                self.cursor=0
+            else:
+                count=0
+                for bytes in bytesList:
+                    count+=len(bytes)
+                print(f"Writing {count} chars.")
+            
+            lineLengthLimit=int(self.stringVarLength.get())
+            for x,line in enumerate(bytesList):
+                #print("line length:",self.text.index(tk.END+"-1c").split(".")[1])
                 diff=lineLengthLimit-int(self.text.index(tk.END+"-1c").split(".")[1])
-            self.text.insert(tk.END, line[0:diff])
-            if x<len(bytesList)-1:
-                self.text.insert(tk.END, "\n")
-        if self.intVarAutoscroll.get():
-            self.text.see(tk.END)
+                while len(line)>diff:
+                    self.text.insert(tk.END, line[0:diff]+b"\n")
+                    line=line[diff:]
+                    diff=lineLengthLimit-int(self.text.index(tk.END+"-1c").split(".")[1])
+                self.text.insert(tk.END, line[0:diff])
+                if x<len(bytesList)-1:
+                    self.text.insert(tk.END, "\n")
+            if self.intVarAutoscroll.get():
+                self.text.see(tk.END)
+            print("Last Line:", self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
     
     def textAfter(self):
         try:

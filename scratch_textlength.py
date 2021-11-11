@@ -13,8 +13,16 @@ def func():
 
 t = Text()
 t.insert(END,chars)
-lineCount = t.index("end-1c")
-print(lineCount)
+lineCharCount = t.index("end-1c")
+lineCount=int(t.index("end-1c").split(".")[0])
+lastLineCharCount=int(t.index("end-1c").split(".")[1])
+lastLine=t.get(f'{t.index("end-1c").split(".")[0]}.0',END)
+print(lastLine)
+count=5
+print(f"Deleting last {count} chars. Result:")
+t.delete(f"end-{1+count}c","end")
+lastLine=t.get(f'{t.index("end-1c").split(".")[0]}.0',END)
+print(lastLine)
 #t.insert(END,chars)
 #t.after_idle(func)
 #t.pack()
