@@ -362,14 +362,14 @@ class ConsoleGUI(tk.PanedWindow):
                 if self.intVarTimestamps.get() and x>0:
                     bytesList[x] = f"<{ctime().split()[3]}:{round(time()%1*1000)%1000:03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
             if self.cursor>0:
-                print(f"Overwriting {self.cursor} chars.")
+                #print(f"Overwriting {self.cursor} chars.")
                 self.text.delete(f"end-{1+self.cursor}c", "end")
                 self.cursor=0
             else:
                 count=0
                 for bytes in bytesList:
                     count+=len(bytes)
-                print(f"Writing {count} chars.")
+                #print(f"Writing {count} chars.")
             
             lineLengthLimit=int(self.stringVarLength.get())
             for x,line in enumerate(bytesList):
@@ -384,7 +384,7 @@ class ConsoleGUI(tk.PanedWindow):
                     self.text.insert(tk.END, "\n")
             if self.intVarAutoscroll.get():
                 self.text.see(tk.END)
-            print("Last Line:", self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+            #print("Last Line:", self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
     
     def textAfter(self):
         try:
