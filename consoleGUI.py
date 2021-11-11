@@ -1,10 +1,10 @@
 #! /usr/bin/python
 
-from socket import MSG_DONTWAIT, socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM,SOL_SOCKET,TCP_NODELAY,IPPROTO_TCP,SO_REUSEADDR,timeout as SocketTimeout
+from socket import socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM,SOL_SOCKET,TCP_NODELAY,IPPROTO_TCP,SO_REUSEADDR,timeout as SocketTimeout
 from serial import Serial
 from time import ctime,sleep,time
 import tkinter as tk
-import sys,re,pyperclip
+import os,sys,re,pyperclip
 
 class ConsoleGUI(tk.PanedWindow):
     bgColorEN = "gray12"
@@ -16,7 +16,7 @@ class ConsoleGUI(tk.PanedWindow):
     enumBaudrate = 1
     enumPing = 2
 
-    def __init__(self, master=None, port="127.0.0.1:4001", baudrate=115200, timeoutSerial=1,timeoutSocket=3):
+    def __init__(self, master=None, port="127.0.0.1:4001", baudrate=115200, timeoutSerial=1,timeoutSocket=2):
         self.alpha = 0.9
         self.alphaEN = False
         self.buffer = b""
@@ -161,7 +161,7 @@ class ConsoleGUI(tk.PanedWindow):
         if isinstance(self.master, tk.Tk):
             self.master.geometry("850x550")
 
-        self.close()
+        #self.close()
         self.onPortEntry()
         self.textAfter()
 
@@ -189,19 +189,16 @@ class ConsoleGUI(tk.PanedWindow):
             self.tcp.setsockopt(SOL_SOCKET,SO_REUSEADDR, 2)
             self.tcp.settimeout(self.timeoutSocket)
             self.tcp.connect(self.address)
-            print(f"SocketMedium.connect(): Connected to {self.address}")
+            print(f"Connected to {self.address}")
             self.tcp.settimeout(0)
             self.tcp.setsockopt(IPPROTO_TCP,TCP_NODELAY,1)
-            return True
         except SocketTimeout as e:
-            print("consoleGUI.startSocket():", type(e), e.args)
-            pass
+            print(f"Connection timeout -- {ctime()}")
         except ConnectionRefusedError:
-            print(f"Connection to {self.address} failed -- {ctime()}")
+            print(f"Connection refused -- {ctime()}")
         except Exception as e:
-            print("consoleGUI.startSocket():",type(e), e.args,"-- SocketMedium Closed")
-            self.close()
-            return
+            print(f"ConsoleGUI.startSocket(): {type(e)}, {e.args} -- SocketMedium Closed -- {ctime()}")
+        finally: self.close()
     
     def startSerial(self):
         try:
@@ -225,11 +222,12 @@ class ConsoleGUI(tk.PanedWindow):
                         self.serial.close()
                         self.serial = None
                 elif self.type=="socket":
-                    if self.tcp:
-                        self.tcp.shutdown(SHUT_RDWR)
-                        self.tcp.close()
-                    if self.udp:
-                        self.udp.close()
+                    try: self.tcp.shutdown(SHUT_RDWR)
+                    except: pass
+                    try: self.tcp.close()
+                    except: pass
+                    try: self.udp.close()
+                    except: pass
                     self.tcp=self.udp=None
                 else: raise Exception("ConsoleGUI.close(): Unknown Port Type:",self.type)
         except OSError as e:
@@ -260,11 +258,15 @@ class ConsoleGUI(tk.PanedWindow):
         try:
             if self.intVarAttach.get():
                 self.start()
+                self.onRts()
                 self.onBaudEntry(None)
             else:
                 self.close()
+        except OSError as e:
+            self.close()
         except Exception as e:
             print("ConsoleGUI.onAttach():", type(e),e.args)
+            self.close()
 
     def onClearscreen(self):
         _state=self.text.config("state")[4]
@@ -400,25 +402,27 @@ class ConsoleGUI(tk.PanedWindow):
 
     def onRts(self):
         try:
-            if self.type=="serial":
-                self.serial.setRTS(self.intVarRts.get())
-            elif self.type=="socket":
-                self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
+            if self.type=="serial": self.serial.setRTS(self.intVarRts.get())
+            elif self.type=="socket": self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
+            print("ConsoleGUI.onRts:",int(not self.intVarRts.get()),int(not self.intVarDtr.get()))
+        except AttributeError: pass
         except ConnectionRefusedError:
-            self.close()
+            if self.type=="socket": self.close()
         except Exception as e:
             print("onRts():", type(e), e.args)
+            self.close()
     
     def onDtr(self):
         try:
-            if self.type=="serial":
-                self.serial.setDTR(self.intVarDtr.get())
-            elif self.type=="socket":
-                self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
+            if self.type=="serial": self.serial.setDTR(self.intVarDtr.get())
+            elif self.type=="socket": self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
+            print("ConsoleGUI.onDtr:",int(not self.intVarRts.get()),int(not self.intVarDtr.get()))
+        except AttributeError: pass
         except ConnectionRefusedError:
-            self.close()
+            if self.type=="socket": self.close()
         except Exception as e:
             print("onDtr():", type(e), e.args)
+            self.close()
 
     def onCommandEntry(self, arg):
         try:
@@ -440,17 +444,18 @@ class ConsoleGUI(tk.PanedWindow):
     
     def onBaudEntry(self, arg):
         baudrate=int(self.stringVarBaud.get())
-        print("ConsoleGUI.onBaudEntry():",baudrate)
         try:
             if self.type=="serial":
                 self.serial.baudrate = baudrate
             elif self.type=="socket":
                 self.udp.send(ConsoleGUI.enumBaudrate.to_bytes(1,"big")+baudrate.to_bytes(4,"big"))
+            print("ConsoleGUI.onBaudEntry():",baudrate)
         except AttributeError: pass
         except ConnectionRefusedError:
-            self.close()
+            if self.type=="socket": self.close()
         except Exception as e:
             print("onBaudEntry():", type(e), e.args)
+            self.close()
     
     def onTextKeyboard(self, arg):
         if isinstance(arg,str):
