@@ -21,7 +21,6 @@ class ConsoleGUI(tk.PanedWindow):
         self.alphaEN = False
         self.buffer = b""
         self.cursor = 0
-        self.i = 0
 
         if not master:
             master = tk.Tk()
@@ -310,45 +309,45 @@ class ConsoleGUI(tk.PanedWindow):
             print("consoleGUI.socketRead():", type(e), e.args)
     
     def processText(self, bytes = b""):
-        self.i +=1
-        print(f"\n\nIteration {self.i}","\nLast Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
-        if self.intVarEscape.get() and not self.intVarRepr.get():
-            pattern = rb"([\b])|([\x1b])"
-            while match := re.search(pattern, bytes):
-                print("")
-                #print("buffer:",self.buffer,"bytes:",bytes," ----------- ","match:",match.group())
-                if  match.group(1):
-                    self._processText(bytes[:match.start()])
-                    self.text.delete(tk.END + "-2c")
-                    bytes = bytes[match.end():]
-                elif match.group(2):
-                    self._processText(bytes[:match.start()])
-                    bytes = bytes[match.start():]
-                    pattern = rb"\x1b\[([\x30-\x3F]*)[\x20-\x2F]*([\x40-\x7E])"
-                    if match := re.search(pattern, bytes):
-                        print("Incoming bytes:",bytes," ----------- ","match:",match.group())
-                        if match.group(2) == b"D" and match.group(1).isdigit():
-                            self.cursor += int(match.group(1))
-                            print("Setting Cursor Position:",self.cursor)
-                            print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
-                        elif match.group(2) == b"K":
-                            print(f"Deleting {self.cursor} chars")
-                            if self.cursor>0:
-                                self.text.delete(f"end-{1+self.cursor}c","end")
-                                self.cursor=0
-                            else:
-                                print("Cursor already at 0! Deleting Nothing!")
-                            print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
-                        else:
-                            raise("Unknown Escape Sequence")
+        try:
+            #print(f"\n\nIteration {self.i}","\nLast Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+            if self.intVarEscape.get() and not self.intVarRepr.get():
+                pattern = b"([\b])|([\x1b])"
+                while match := re.search(pattern, bytes):
+                    #print("")
+                    #print("buffer:",self.buffer,"bytes:",bytes," ----------- ","match:",match.group())
+                    if  match.group(1):
+                        self._processText(bytes[:match.start()])
+                        self.text.delete(tk.END + "-2c")
                         bytes = bytes[match.end():]
-                    else:
-                        self.buffer=bytes
-                        #print("Incomplete Escape Sequence")
-                        return
-            self.buffer=b""
-        self._processText(bytes)
-        #print("Last Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+                    elif match.group(2):
+                        self._processText(bytes[:match.start()])
+                        bytes = bytes[match.start():]
+                        _pattern = b"\x1b\[([\x30-\x3F]*)[\x20-\x2F]*([\x40-\x7E])"
+                        if match := re.search(_pattern, bytes):
+                            #print("Bytes:",bytes," -- ","match:",match.group())
+                            if match.group(2) == b"D" and match.group(1).isdigit():
+                                self.cursor += int(match.group(1))
+                                #print("Setting Cursor Position:",self.cursor)
+                                #print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+                            elif match.group(2) == b"K":
+                                #print(f"Deleting {self.cursor} chars")
+                                if self.cursor>0:
+                                    self.text.delete(f"end-{1+self.cursor}c","end")
+                                    self.cursor=0
+                                #print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+                            else:
+                                raise Exception("Unknown Escape Sequence")
+                            bytes = bytes[match.end():]
+                        else:
+                            self.buffer=bytes
+                            #print("Incomplete Escape Sequence")
+                            return
+                self.buffer=b""
+            self._processText(bytes)
+            #print("Last Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+        except Exception as e:
+            print("ConsoleGUI._processText():",type(e),e.args)
     
     def _processText(self, bytes = b""):
         if bytes:
