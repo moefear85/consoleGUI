@@ -284,8 +284,13 @@ class ConsoleGUI(tk.PanedWindow):
                     raise Exception("bytes < self.serial.in_waiting")
                 if self.buffer or bytes:
                     self.processText(self.buffer + bytes)
+        except OSError as e:
+            if e.errno==5:pass
+            else: print("ConsoleGUI.serialRead():", type(e), e.args)
+            self.close()
         except Exception as e:
             print("ConsoleGUI.serialRead():", type(e), e.args)
+            self.close()
             return
     
     def socketRead(self):
@@ -418,6 +423,7 @@ class ConsoleGUI(tk.PanedWindow):
                 self.serial.baudrate = baudrate
             elif self.type=="socket":
                 self.udp.send(ConsoleGUI.enumBaudrate.to_bytes(1,"big")+baudrate.to_bytes(4,"big"))
+        except AttributeError: pass
         except ConnectionRefusedError:
             self.close()
         except Exception as e:

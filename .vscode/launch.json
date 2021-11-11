@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args":["/dev/ttyACM1"]
+            "args":["/dev/ttyACM2"]
         }
     ]
 }
