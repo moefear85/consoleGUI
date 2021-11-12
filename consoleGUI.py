@@ -46,7 +46,7 @@ class ConsoleGUI(tk.PanedWindow):
                 self.master.attributes("-alpha", self.alpha)
             except Exception as e:
                 print("__init__():", type(e), e.args)
-        
+        5
         #self.master.attributes('-topmost', True)
         #self.master.update()
         
@@ -192,13 +192,15 @@ class ConsoleGUI(tk.PanedWindow):
             print(f"Connected to {self.address}")
             self.tcp.settimeout(0)
             self.tcp.setsockopt(IPPROTO_TCP,TCP_NODELAY,1)
+            return True
         except SocketTimeout as e:
             print(f"Connection timeout -- {ctime()}")
         except ConnectionRefusedError:
             print(f"Connection refused -- {ctime()}")
         except Exception as e:
             print(f"ConsoleGUI.startSocket(): {type(e)}, {e.args} -- SocketMedium Closed -- {ctime()}")
-        finally: self.close()
+        self.close()
+        return False
     
     def startSerial(self):
         try:
@@ -238,15 +240,20 @@ class ConsoleGUI(tk.PanedWindow):
     
     def onPortEntry(self, arg1=None,arg2=None,arg3=None):
         try:
-            if self.stringVarPort.get():            
-                match = re.search("(\d+\.\d+\.\d+\.\d+)",self.stringVarPort.get())
+            if self.stringVarPort.get():
+                hostname=self.stringVarPort.get()
+                for _hostname in ("localhost","0.0.0.0"):
+                    hostname=hostname.replace(_hostname,"127.0.0.1")
+                match = re.search("(\d+\.\d+\.\d+\.\d+)",hostname)
                 if match:
                     self.type="socket"
-                    address = self.stringVarPort.get().split(":")
+                    address = hostname.split(":")
                     self.address=(address[0],int(address[1]))
                 else:
                     self.type="serial"
-                try: self.master.title(self.stringVarPort.get())
+                try:
+                    if hostname: self.master.title(hostname)
+                    else: self.master.title(self.stringVarPort.get())
                 except Exception as e:
                     pass
                 self.onAttach()
@@ -303,8 +310,8 @@ class ConsoleGUI(tk.PanedWindow):
                 except BlockingIOError as e:
                     bytes=b""
                     blockingError = True
-                    if e.errno == 11: pass
-                    else: print(e.args)
+                    if e.errno==11 or e.errno==10035: pass
+                    else: print("ConsoleGUI.socketRead():",type(e),e.args)
                 if not blockingError and not bytes: self.close()
                 if bytes: self.processText(self.buffer + bytes)
         except Exception as e:
