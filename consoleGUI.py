@@ -76,11 +76,11 @@ class ConsoleGUI(tk.PanedWindow):
         self.checkRepr.pack(side=tk.LEFT)
 
         self.intVarRts = tk.IntVar(value=0)
-        self.checkRts = tk.Checkbutton(self.controlsFrame, text = "RTS", variable=self.intVarRts, command=self.onRts)
+        self.checkRts = tk.Checkbutton(self.controlsFrame, text = "RTS", variable=self.intVarRts, command=self.onRtsDtr)
         self.checkRts.pack(side=tk.LEFT)
 
         self.intVarDtr = tk.IntVar(value=0)
-        self.checkDtr = tk.Checkbutton(self.controlsFrame, text = "DTR", variable=self.intVarDtr, command=self.onDtr)
+        self.checkDtr = tk.Checkbutton(self.controlsFrame, text = "DTR", variable=self.intVarDtr, command=self.onRtsDtr)
         self.checkDtr.pack(side=tk.LEFT)
 
         self.intVarAutoscroll = tk.IntVar(value=1)
@@ -258,7 +258,7 @@ class ConsoleGUI(tk.PanedWindow):
         try:
             if self.intVarAttach.get():
                 self.start()
-                self.onRts()
+                self.onRtsDtr()
                 self.onBaudEntry(None)
             else:
                 self.close()
@@ -400,28 +400,18 @@ class ConsoleGUI(tk.PanedWindow):
         except Exception as e:
             print("ConsoleGUI.textAfter():",type(e),e.args)
 
-    def onRts(self):
+    def onRtsDtr(self):
         try:
-            if self.type=="serial": self.serial.setRTS(self.intVarRts.get())
+            if self.type=="serial":
+                self.serial.setRTS(self.intVarRts.get())
+                self.serial.setDTR(self.intVarDtr.get())
             elif self.type=="socket": self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
-            print("ConsoleGUI.onRts:",int(not self.intVarRts.get()),int(not self.intVarDtr.get()))
+            print("ConsoleGUI.onRtsDtr:",int(not self.intVarRts.get()),int(not self.intVarDtr.get()))
         except AttributeError: pass
         except ConnectionRefusedError:
             if self.type=="socket": self.close()
         except Exception as e:
-            print("onRts():", type(e), e.args)
-            self.close()
-    
-    def onDtr(self):
-        try:
-            if self.type=="serial": self.serial.setDTR(self.intVarDtr.get())
-            elif self.type=="socket": self.udp.send(ConsoleGUI.enumBootmode.to_bytes(1,"big")+(not self.intVarRts.get()).to_bytes(1,"big")+(not self.intVarDtr.get()).to_bytes(1,"big"))
-            print("ConsoleGUI.onDtr:",int(not self.intVarRts.get()),int(not self.intVarDtr.get()))
-        except AttributeError: pass
-        except ConnectionRefusedError:
-            if self.type=="socket": self.close()
-        except Exception as e:
-            print("onDtr():", type(e), e.args)
+            print("onRtsDtr():", type(e), e.args)
             self.close()
 
     def onCommandEntry(self, arg):
