@@ -5,7 +5,7 @@ from serial import Serial
 from time import ctime,sleep,time
 import tkinter as tk
 import os,sys,re,pyperclip
-from synchronizer import Synchronizer
+from mpySync import MPYSync
 
 class ConsoleGUI(tk.PanedWindow):
     bgColorEN = "gray12"

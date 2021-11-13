@@ -6,7 +6,7 @@ from binascii import hexlify, unhexlify
 * Make listFilesystem print all subdirs recursively, listing only files with full paths by default, starting from the given path. Empty paths defacto default to "/" so no extra logic needed. Optional Parameters list only files, dirs, or both in cwd. Remove duplicates and rename to list()
 '''
 
-class Synchronizer:
+class MPYSync:
     timeout = 5
     FILE = 32768
     DIRECTORY = 16384
