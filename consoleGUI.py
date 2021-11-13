@@ -1,10 +1,11 @@
 #! /usr/bin/python
 
-from socket import socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM,SOL_SOCKET,TCP_NODELAY,IPPROTO_TCP,SO_REUSEADDR,timeout as SocketTimeout
+from socket import socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM,SOL_SOCKET,TCP_NODELAY,IPPROTO_TCP,SO_REUSEADDR,SO_RCVBUF,SO_SNDBUF,timeout as SocketTimeout
 from serial import Serial
 from time import ctime,sleep,time
 import tkinter as tk
 import os,sys,re,pyperclip
+from synchronizer import Synchronizer
 
 class ConsoleGUI(tk.PanedWindow):
     bgColorEN = "gray12"
@@ -21,6 +22,7 @@ class ConsoleGUI(tk.PanedWindow):
         self.alphaEN = False
         self.buffer = b""
         self.cursor = 0
+        self.sockBufSize=100
 
         if not master:
             master = tk.Tk()
@@ -192,6 +194,8 @@ class ConsoleGUI(tk.PanedWindow):
             print(f"Connected to {self.address}")
             self.tcp.settimeout(0)
             self.tcp.setsockopt(IPPROTO_TCP,TCP_NODELAY,1)
+            self.tcp.setsockopt(SOL_SOCKET,SO_RCVBUF,self.sockBufSize)
+            self.tcp.setsockopt(SOL_SOCKET,SO_SNDBUF,self.sockBufSize)
             return True
         except SocketTimeout as e:
             print(f"Connection timeout -- {ctime()}")
@@ -267,10 +271,8 @@ class ConsoleGUI(tk.PanedWindow):
                 self.start()
                 self.onRtsDtr()
                 self.onBaudEntry(None)
-            else:
-                self.close()
-        except OSError as e:
-            self.close()
+            else: self.close()
+        except OSError as e: self.close()
         except Exception as e:
             print("ConsoleGUI.onAttach():", type(e),e.args)
             self.close()
@@ -307,6 +309,7 @@ class ConsoleGUI(tk.PanedWindow):
                 try:
                     blockingError=False
                     bytes = self.tcp.recv(100)
+                    #print("rcvbuf:",self.tcp.getsockopt(SOL_SOCKET,SO_RCVBUF),",sndbuf:",self.tcp.getsockopt(SOL_SOCKET,SO_SNDBUF))
                 except BlockingIOError as e:
                     bytes=b""
                     blockingError = True
@@ -314,6 +317,7 @@ class ConsoleGUI(tk.PanedWindow):
                     else: print("ConsoleGUI.socketRead():",type(e),e.args)
                 if not blockingError and not bytes: self.close()
                 if bytes: self.processText(self.buffer + bytes)
+        except ConnectionResetError: self.close()
         except Exception as e:
             print("consoleGUI.socketRead():", type(e), e.args)
     
