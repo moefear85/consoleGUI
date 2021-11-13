@@ -323,7 +323,7 @@ class ConsoleGUI(tk.PanedWindow):
     
     def processText(self, bytes = b""):
         try:
-            #print(f"\n\nIteration {self.i}","\nLast Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
+            #print(f"\n\nIteration {time()}","\nLast Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
             if self.intVarEscape.get() and not self.intVarRepr.get():
                 pattern = b"([\b])|([\x1b])"
                 while match := re.search(pattern, bytes):
@@ -463,16 +463,16 @@ class ConsoleGUI(tk.PanedWindow):
             char=arg
             bytes = char.encode("utf-8")
         else:
-            char=arg.char
-            if arg.keycode == 111: # UP
+            if arg.keycode==111 or arg.keysym=="Up": # UP
                 bytes = b"\x1B[A"
-            elif arg.keycode == 116: # DOWN
+            elif arg.keycode==116 or arg.keysym=="Down": # DOWN
                 bytes = b"\x1B[B"
-            elif arg.keycode == 113: # LEFT
+            elif arg.keycode==113 or arg.keysym=="Left": # LEFT
                 bytes = b"\x1B[D"
-            elif arg.keycode == 114: #RIGHT
+            elif arg.keycode==114 or arg.keysym=="Right": #RIGHT
                 bytes = b"\x1B[C"
             else:
+                char=arg.char
                 bytes = char.encode("utf-8")
         
         if self.intVarEcho.get():

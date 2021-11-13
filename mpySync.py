@@ -18,8 +18,7 @@ class MPYSync:
     
     def open(self):
         self.serial = Serial(self.port, timeout=self.timeout, baudrate = self.baudrate)
-        self.flush()
-        return self
+        #self.flush()
     
     def close(self):
         if self.serial:
