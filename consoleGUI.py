@@ -369,9 +369,12 @@ class ConsoleGUI(tk.PanedWindow):
             if not self.intVarShowCR.get():
                 bytes = bytes.replace(b"\r", b"")
             bytesList = bytes.split(b"\n")
+            #if bytesList[0]==b"": del bytesList[0]
+            #if bytesList[-1]==b"": del bytesList[-1]
             for x, bytes in enumerate(bytesList):
-                if self.intVarRepr.get() and len(bytesList[x]) > 0:
+                if self.intVarRepr.get():
                         bytesList[x] = repr(bytesList[x]).encode("utf-8")[2:-1]
+                        if x<len(bytesList)-1: bytesList[x]+=repr("\n").encode("utf-8")[2:-1]
                 if self.intVarTimestamps.get() and x>0:
                     bytesList[x] = f"<{ctime().split()[3]}:{round(time()%1*1000)%1000:03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
             if self.cursor>0:
