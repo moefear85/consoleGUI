@@ -7,7 +7,7 @@ from binascii import hexlify, unhexlify
 '''
 
 class MPYSync:
-    timeout = 5
+    timeout = None
     FILE = 32768
     DIRECTORY = 16384
 
@@ -18,26 +18,29 @@ class MPYSync:
     
     def open(self):
         self.serial = Serial(self.port, timeout=self.timeout, baudrate = self.baudrate)
-        #self.flush()
+        print("rts:",self.serial.rts,",dtr:",self.serial.dtr)
+        self.serial.rts=False
+        self.serial.dtr=False
+        self.flush()
     
     def close(self):
         if self.serial:
             self.serial.close()
             self.serial=None
     
-    def flush(self):
+    def flush(self,toPrint=False):
         # The following sequence is necessary, else atleast esp32s2 won't work right
-        self.command("")
-        self.command("\x03")
-        sleep(0.1)
+        #self.command("",toPrint)
+        #self.command("\x03",toPrint)
+        #sleep(0.5)
         #self.command("")
         #sleep(0.01)
-        self.command("")
-        #sleep(0.01)
-        self.command("import os")
-        #sleep(0.01)
-        self.chdir("/")
-        #sleep(0.01)
+        #self.command("",toPrint)
+        sleep(0.1)
+        self.command("import os",toPrint)
+        sleep(0.1)
+        self.chdir("/",toPrint)
+        sleep(0.01)
     
     def response(self, toPrint= False):
         end = False
@@ -69,9 +72,9 @@ class MPYSync:
         return message, timedout
     
     def command(self, string, toPrint=False, response=True):
-        self.serial.flushInput()
+        #self.serial.flushOutput()
         self.serial.write((string + "\r\n").encode("utf-8"))
-        self.serial.flushOutput()
+        #self.serial.flushInput()
         if response:
             result = self.response(toPrint)
             message = []

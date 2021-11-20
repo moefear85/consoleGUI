@@ -106,7 +106,7 @@ class ConsoleGUI(tk.PanedWindow):
         self.controls2Frame.pack(fill=tk.BOTH,expand=False)
 
         self.intVarEscape = tk.IntVar()
-        self.intVarEscape.set(0)
+        self.intVarEscape.set(1)
         self.checkEscape = tk.Checkbutton(self.controls2Frame, text = "^[", variable=self.intVarEscape)
         self.checkEscape.pack(side=tk.LEFT)
 
@@ -367,7 +367,7 @@ class ConsoleGUI(tk.PanedWindow):
             if self.intVarTranslateCR.get():
                 bytes = bytes.replace(b"\r", b"\n")
             if not self.intVarShowCR.get():
-                bytes = bytes.replace(b"\r", b" ")
+                bytes = bytes.replace(b"\r", b"")
             bytesList = bytes.split(b"\n")
             for x, bytes in enumerate(bytesList):
                 if self.intVarRepr.get() and len(bytesList[x]) > 0:
