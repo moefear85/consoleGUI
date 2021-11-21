@@ -4,6 +4,7 @@ from socket import socket,SHUT_RDWR,AF_INET,SOCK_DGRAM,SOCK_STREAM,SOL_SOCKET,TC
 from serial import Serial
 from time import ctime,sleep,time
 import tkinter as tk
+from tkinter import INSERT
 import os,sys,re,pyperclip
 from mpySync import MPYSync
 
@@ -325,15 +326,21 @@ class ConsoleGUI(tk.PanedWindow):
         try:
             #print(f"\n\nIteration {time()}","\nLast Line:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
             if self.intVarEscape.get() and not self.intVarRepr.get():
-                pattern = b"([\b])|([\x1b])"
+                pattern = rb"([\b])|([\x1b])"
+                #print("searching in:",repr(bytes)[2:-1])
                 while match := re.search(pattern, bytes):
                     #print("")
                     #print("buffer:",self.buffer,"bytes:",bytes," ----------- ","match:",match.group())
                     if  match.group(1):
+                        #print("match group 1")
                         self._processText(bytes[:match.start()])
-                        self.text.delete(tk.END + "-2c")
+                        #self.text.delete(tk.END + "-2c")
+                        self.cursor+=1
+                        self.text.mark_set("insert",f"end-{self.cursor+1}c")
+                        #print("cursor pos: ",self.cursor)
                         bytes = bytes[match.end():]
                     elif match.group(2):
+                        #print("match group 2")
                         self._processText(bytes[:match.start()])
                         bytes = bytes[match.start():]
                         _pattern = b"\x1b\[([\x30-\x3F]*)[\x20-\x2F]*([\x40-\x7E])"
@@ -341,6 +348,8 @@ class ConsoleGUI(tk.PanedWindow):
                             #print("Bytes:",bytes," -- ","match:",match.group())
                             if match.group(2) == b"D" and match.group(1).isdigit():
                                 self.cursor += int(match.group(1))
+                                #self.cursor = int(match.group(1))
+                                self.text.mark_set("insert",f"end-{1+self.cursor}c")
                                 #print("Setting Cursor Position:",self.cursor)
                                 #print("Last Line Now:",self.text.get(f'{self.text.index("end-1c").split(".")[0]}.0',tk.END))
                             elif match.group(2) == b"K":
@@ -377,14 +386,26 @@ class ConsoleGUI(tk.PanedWindow):
                         if x<len(bytesList)-1: bytesList[x]+=repr("\n").encode("utf-8")[2:-1]
                 if self.intVarTimestamps.get() and x>0:
                     bytesList[x] = f"<{ctime().split()[3]}:{round(time()%1*1000)%1000:03d}".encode("utf-8")+">\t".encode("utf-8") + bytesList[x]
-            if self.cursor>0:
-                #print(f"Overwriting {self.cursor} chars.")
-                self.text.delete(f"end-{1+self.cursor}c", "end")
-                self.cursor=0
-            else:
-                count=0
-                for bytes in bytesList:
-                    count+=len(bytes)
+            while self.cursor>0:
+                if len(bytesList)>0:
+                    if len(bytesList[0])>0:
+                        #print("inserting:",bytesList[0][0:1])
+                        self.text.mark_set("insert",f"end-{1+self.cursor}c")
+                        self.text.insert(self.text.index(INSERT),bytesList[0][0:1])
+                        self.text.mark_set("insert",f"end-{1+self.cursor}c")
+                        self.text.delete(self.text.index(INSERT))
+                        bytesList[0]=bytesList[0][1:]
+                        self.cursor-=1
+                    elif len(bytesList[0])>1: bytesList=bytesList[1:]
+                    else: break
+                    #print(f"Overwriting {self.cursor} chars.")
+                    #self.text.delete(f"end-{1+self.cursor}c", "end")
+                    #self.cursor=0
+                else: break
+            #else:
+            #    count=0
+            #    for bytes in bytesList:
+            #        count+=len(bytes)
                 #print(f"Writing {count} chars.")
             
             lineLengthLimit=int(self.stringVarLength.get())
