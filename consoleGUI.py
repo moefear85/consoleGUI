@@ -495,6 +495,8 @@ class ConsoleGUI(tk.PanedWindow):
                 bytes = b"\x1B[D"
             elif arg.keycode==114 or arg.keysym=="Right": #RIGHT
                 bytes = b"\x1B[C"
+            elif arg.keysym=="Delete":
+                bytes=b"\x7f"
             else:
                 char=arg.char
                 bytes = char.encode("utf-8")
