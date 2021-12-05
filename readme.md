@@ -1,1 +1,3 @@
 I gave up on the PyMakr extension in VSCode long ago (too fragile). So I am coding my own serial monitor/console that combines simplicity with flexibility, whose UI is focussed on what I need.
+
+Note 03.12.2021: I've been busy with other projects, so I haven't been able to complete documentation for this one. This will change in the coming few days. I've also made several fixes/improvements in the mean-time, that I haven't been able to upload yet
